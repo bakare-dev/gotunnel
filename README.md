@@ -79,7 +79,7 @@ Public Internet          Tunnel Server           Your Machine
 -   **Stream Multiplexing**: Each public connection becomes a unique stream
 -   **Concurrent**: Handles multiple clients and streams simultaneously
 
-See [PROTOCOL.md](docs/PROTOCOL.md) and [ARCHITECTURE.md](docs/ARCHITECTURE.md) for details.
+See [PROTOCOL.md](docs/protocol.md) and [ARCHITECTURE.md](docs/architecture.md) for details.
 
 ## Configuration
 
