@@ -19,7 +19,7 @@ First off, thank you for considering contributing to GoTunnel! It's people like 
 
 ## Code of Conduct
 
-This project and everyone participating in it is governed by our Code of Conduct. By participating, you are expected to uphold this code. Please report unacceptable behavior to [bakarepraise@example.com](mailto:bakarepraise@example.com).
+This project and everyone participating in it is governed by our Code of Conduct. By participating, you are expected to uphold this code. Please report unacceptable behavior to [bakarepraise3@gmail.com](mailto:bakarepraise3@gmail.com).
 
 ### Our Standards
 
@@ -637,7 +637,7 @@ Fixes #123
 
 -   **GitHub Issues**: Bug reports, feature requests
 -   **GitHub Discussions**: Questions, ideas, general discussion
--   **Email**: bakarepraise@example.com (for private concerns)
+-   **Email**: bakarepraise3@gmail.com (for private concerns)
 
 ### Getting Help
 
@@ -712,6 +712,6 @@ By contributing to GoTunnel, you agree that your contributions will be licensed 
 Feel free to reach out:
 
 -   Open a [GitHub Discussion](https://github.com/bakare-dev/gotunnel/discussions)
--   Email: bakarepraise@example.com
+-   Email: bakarepraise3@gmail.com
 
 Thank you for contributing to GoTunnel! 🚀

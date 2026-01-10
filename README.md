@@ -469,7 +469,7 @@ See [PROTOCOL.md](docs/PROTOCOL.md) and [ARCHITECTURE.md](docs/ARCHITECTURE.md) 
 -   [Protocol Specification](docs/PROTOCOL.md) - Wire protocol details
 -   [Architecture](docs/ARCHITECTURE.md) - System design and components
 -   [Deployment Guide](#deployment-guide) - Production deployment instructions
--   [Contributing](CONTRIBUTING.md) - How to contribute
+-   [Contributing](docs/CONTRIBUTING.md) - How to contribute
 
 ## Performance
 
@@ -579,7 +579,7 @@ Built by **Bakare Praise** as a portfolio project demonstrating:
 
 ## Support
 
--   📧 Email: bakarepraise@example.com
+-   📧 Email: bakarepraise3@gmail.com
 -   🐛 Issues: [GitHub Issues](https://github.com/bakare-dev/gotunnel/issues)
 -   💬 Discussions: [GitHub Discussions](https://github.com/bakare-dev/gotunnel/discussions)
 -   ⭐ Star this repo if you find it useful!

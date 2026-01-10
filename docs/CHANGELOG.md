@@ -321,7 +321,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 -   ⭐ Star this repo to get notifications
 -   👁️ Watch releases for new versions
--   🐦 Follow updates on Twitter: [@bakarepraise](https://twitter.com/bakare-dev)
+-   🐦 Follow updates on Twitter: [@bakare-dev](https://twitter.com/bakare-dev)
 -   💬 Join discussions on GitHub
 
 ---
