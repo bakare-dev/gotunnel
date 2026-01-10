@@ -469,7 +469,7 @@ See [PROTOCOL.md](docs/PROTOCOL.md) and [ARCHITECTURE.md](docs/ARCHITECTURE.md) 
 -   [Protocol Specification](docs/PROTOCOL.md) - Wire protocol details
 -   [Architecture](docs/ARCHITECTURE.md) - System design and components
 -   [Deployment Guide](#deployment-guide) - Production deployment instructions
--   [Contributing](docs/CONTRIBUTING.md) - How to contribute
+-   [Contributing](CONTRIBUTING.md) - How to contribute
 
 ## Performance
 
