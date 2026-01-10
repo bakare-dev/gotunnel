@@ -1,7 +1,5 @@
 package client
 
-import "log"
-
 func (f *Forwarder) closeStream(streamID uint32) {
 	f.mu.Lock()
 	conn, ok := f.conns[streamID]
@@ -11,5 +9,4 @@ func (f *Forwarder) closeStream(streamID uint32) {
 	}
 	f.mu.Unlock()
 
-	log.Println("stream", streamID, "closed")
 }

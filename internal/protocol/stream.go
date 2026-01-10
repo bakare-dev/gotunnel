@@ -2,18 +2,27 @@ package protocol
 
 type Stream struct {
 	ID     uint32
-	in     chan []byte
+	In     chan []byte
 	closed chan struct{}
 }
 
 func NewStream(id uint32) *Stream {
 	return &Stream{
 		ID:     id,
-		in:     make(chan []byte, 16),
+		In:     make(chan []byte, 16),
 		closed: make(chan struct{}),
 	}
 }
 
 func (s *Stream) Close() {
-	close(s.closed)
+	select {
+	case <-s.closed:
+	default:
+		close(s.closed)
+		close(s.In)
+	}
+}
+
+func (s *Stream) Done() <-chan struct{} {
+	return s.closed
 }

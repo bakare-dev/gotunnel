@@ -30,6 +30,7 @@ type Session struct {
 
 	lastSeen time.Time
 	mu       sync.Mutex
+	writeMu  sync.Mutex
 	closed   chan struct{}
 }
 
@@ -60,6 +61,9 @@ func (s *Session) ReadFrame() (*Frame, error) {
 }
 
 func (s *Session) WriteFrame(f *Frame) error {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+
 	f.Version = ProtocolVersion1
 	return f.Encode(s.w)
 }

@@ -11,7 +11,7 @@ func (s *Session) HandleFrame(f *Frame) error {
 		if !ok {
 			return ErrInvalidLength
 		}
-		stream.in <- f.Payload
+		stream.In <- f.Payload
 
 	case MsgStreamClose:
 		s.streams.Close(f.StreamID)

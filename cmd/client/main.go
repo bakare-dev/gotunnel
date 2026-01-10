@@ -2,8 +2,10 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"net"
+	"time"
 
 	"github.com/bakare-dev/gotunnel/internal/client"
 	"github.com/bakare-dev/gotunnel/internal/protocol"
@@ -63,6 +65,7 @@ func main() {
 		log.Fatal("authentication rejected by server")
 	}
 
+	// Bind
 	frame, err = sess.ReadFrame()
 	if err != nil || frame.Type != protocol.MsgBindOK {
 		log.Fatal("failed to bind public port")
@@ -70,18 +73,15 @@ func main() {
 
 	publicPort := protocol.DecodeUint16(frame.Payload)
 
-	log.Printf(
-		"Tunnel established: tcp://localhost:%d -> %s\n",
-		publicPort,
-		*localAddr,
-	)
+	printBanner(*serverAddr, publicPort, *localAddr)
 
 	forwarder := client.NewForwarder(sess, *localAddr)
 
+	// Main loop
 	for {
 		frame, err := sess.ReadFrame()
 		if err != nil {
-			log.Println("client session error:", err)
+			log.Println("│ ERROR │ Session lost:", err)
 			return
 		}
 
@@ -91,4 +91,24 @@ func main() {
 
 		forwarder.HandleFrame(frame)
 	}
+}
+
+func printBanner(server string, publicPort uint16, localAddr string) {
+	banner := `
+╔════════════════════════════════════════════════════════════╗
+║                   GoTunnel v0.1.0                          ║
+║                 Secure TCP Tunneling                       ║
+╚════════════════════════════════════════════════════════════╝
+
+Session Status         online
+Version                0.1.0
+Tunnel Server          %s
+
+Forwarding             tcp://localhost:%d → %s
+
+HTTP Requests
+─────────────────────────────────────────────────────────────
+`
+	fmt.Printf(banner, server, publicPort, localAddr)
+	fmt.Printf("Connected at %s\n\n", time.Now().Format("2006-01-02 15:04:05"))
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -10,6 +11,8 @@ import (
 )
 
 func main() {
+	printBanner()
+
 	tunnelAddr := os.Getenv("TUNNEL_LISTEN")
 	if tunnelAddr == "" {
 		tunnelAddr = ":9000"
@@ -24,7 +27,11 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println("tunnel listening on", tunnelAddr)
+
+	log.Println("│ INFO  │ Server started")
+	log.Printf("│ INFO  │ Tunnel port: %s\n", tunnelAddr)
+	log.Println("│ INFO  │ Ready for connections")
+	log.Println("─────────────────────────────────────────────────────────────")
 
 	for {
 		conn, err := ln.Accept()
@@ -33,6 +40,15 @@ func main() {
 		}
 		go handleClient(conn, router, public)
 	}
+}
+
+func printBanner() {
+	banner := `
+╔════════════════════════════════════════════════════════════╗
+║              GoTunnel Server v0.1.0                        ║
+╚════════════════════════════════════════════════════════════╝
+`
+	fmt.Println(banner)
 }
 
 func handleClient(conn net.Conn, router *server.Router, public *server.PublicListener) {
@@ -49,9 +65,17 @@ func handleClient(conn net.Conn, router *server.Router, public *server.PublicLis
 		switch frame.Type {
 
 		case protocol.MsgHandshake:
+			if err := sess.ProcessHandshake(frame); err != nil {
+				log.Printf("│ ERROR │ Handshake failed: %v", err)
+				return
+			}
 			_ = sess.WriteFrame(&protocol.Frame{Type: protocol.MsgHandshakeAck})
 
 		case protocol.MsgAuth:
+			if err := sess.ProcessAuth(frame); err != nil {
+				log.Printf("│ ERROR │ Auth failed: %v", err)
+				return
+			}
 			_ = sess.WriteFrame(&protocol.Frame{Type: protocol.MsgAuthOK})
 
 			port := router.AllocatePort(sess)
@@ -62,7 +86,9 @@ func handleClient(conn net.Conn, router *server.Router, public *server.PublicLis
 				Payload: protocol.EncodeUint16(uint16(port)),
 			})
 
-			log.Println("client bound to public port", port)
+			log.Printf("│ INFO  │ Client bound to public port %d", port)
+			log.Printf("│ INFO  │ Exposing: %s → :%d", sess.ExposeAddr, port)
+			log.Println("─────────────────────────────────────────────────────────────")
 			goto FORWARD
 		}
 	}
@@ -72,8 +98,14 @@ FORWARD:
 		frame, err := sess.ReadFrame()
 		if err != nil {
 			router.Remove(sess.PublicPort)
+			log.Printf("│ INFO  │ Client disconnected (port %d)", sess.PublicPort)
 			return
 		}
+
+		if frame.Type == protocol.MsgHeartbeat {
+			continue
+		}
+
 		_ = sess.HandleFrame(frame)
 	}
 }
