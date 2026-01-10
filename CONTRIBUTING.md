@@ -57,7 +57,7 @@ Before you begin, ensure you have the following installed:
 2. **Clone your fork**:
 
 ```bash
-   git clone https://github.com/YOUR_USERNAME/gotunnel.git
+   git clone https://github.com/bakare-dev/gotunnel.git
    cd gotunnel
 ```
 
@@ -306,7 +306,7 @@ git push origin feature/your-feature-name
 
 ### Go Style Guide
 
-Follow the official [Go Code Review Comments](https://github.com/golang/go/wiki/CodeReviewComments).
+Follow the official [Go Code Review Comments](https://go.dev/wiki/CodeReviewComments).
 
 #### General Principles
 
