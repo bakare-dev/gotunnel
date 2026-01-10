@@ -12,6 +12,7 @@ A lightweight, self-hosted TCP tunneling system written in Go. Expose local serv
 -   💓 **Heartbeat Management** - Automatic session health monitoring
 -   🚀 **Multi-Client Support** - Run multiple tunnels simultaneously
 -   📦 **Zero Dependencies** - Pure Go implementation, single binary deployment
+-   📊 **HTTP Request Logging** - Real-time HTTP traffic monitoring with status codes and latency
 
 ## Quick Start
 
@@ -83,19 +84,10 @@ See [PROTOCOL.md](docs/protocol.md) and [ARCHITECTURE.md](docs/architecture.md) 
 
 ## Configuration
 
-### Server (Environment Variables)
-
-```bash
-TUNNEL_PORT=9000           # Port for tunnel connections (default: 9000)
-AUTH_TOKEN=secret123       # Authentication token (optional)
-```
-
 ### Client (CLI Flags)
 
 ```bash
---server    # Tunnel server address (default: localhost:9000)
 --local     # Local service to expose (required, e.g., localhost:8080)
---token     # Authentication token (optional)
 ```
 
 ## Installation
@@ -129,6 +121,26 @@ docker run gotunnel/client --server server:9000 --local host.docker.internal:808
 ```
 
 ## Examples
+
+## Monitoring
+
+GoTunnel provides real-time visibility into your tunneled traffic:
+
+### HTTP Request Logging
+
+Both server and client display HTTP requests in a clean, readable format:
+
+```
+│ HTTP  │ ✓ GET    /api/users                  200 OK           45ms
+│ HTTP  │ ✓ POST   /api/login                  201 Created     120ms
+│ HTTP  │ ⚠ GET    /api/missing                404 Not Found    12ms
+│ HTTP  │ ✗ POST   /api/error                  500 Error        85ms
+```
+
+-   ✓ Success (2xx)
+-   ⚠ Client Error (4xx)
+-   ✗ Server Error (5xx)
+-   Duration in milliseconds
 
 ### Expose Local Web Server
 
