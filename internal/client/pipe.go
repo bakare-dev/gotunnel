@@ -24,12 +24,20 @@ func (f *Forwarder) pipeLocalToTunnel(streamID uint32, conn net.Conn) {
 		if exists {
 			conn.Close()
 		}
+
+		f.sess.Metrics.StreamClosed()
 	}()
+
+	f.sess.Metrics.StreamOpened()
 
 	buf := make([]byte, 4096)
 	isFirstPacket := true
 
 	for {
+		if f.sess.IsClosed() {
+			return
+		}
+
 		n, err := conn.Read(buf)
 		if err != nil {
 			if strings.Contains(err.Error(), "use of closed network connection") {
@@ -50,6 +58,10 @@ func (f *Forwarder) pipeLocalToTunnel(streamID uint32, conn net.Conn) {
 					httpLog.Response = tunnel.ParseHTTPResponse(buf[:n])
 					httpLog.Duration = time.Since(httpLog.StartTime)
 
+					if httpLog.Response != nil {
+						f.sess.Metrics.RecordHTTPRequest(httpLog.Response.StatusCode, httpLog.Duration)
+					}
+
 					if logStr := httpLog.String(); logStr != "" {
 						log.Printf("│ HTTP  │ %s", logStr)
 					}
@@ -63,6 +75,9 @@ func (f *Forwarder) pipeLocalToTunnel(streamID uint32, conn net.Conn) {
 				Payload:  buf[:n],
 			})
 			if err != nil {
+				if err == protocol.ErrSessionExpired {
+					return
+				}
 				log.Printf("│ ERROR │ [Stream %d] Tunnel write failed: %v", streamID, err)
 				break
 			}

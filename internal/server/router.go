@@ -2,6 +2,7 @@ package server
 
 import (
 	"errors"
+	"log"
 	"net"
 	"sync"
 
@@ -48,6 +49,20 @@ func (r *Router) Remove(port int) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	delete(r.sessions, port)
+}
+
+func (r *Router) CloseAll() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	log.Printf("│ INFO  │ Closing %d active sessions...", len(r.sessions))
+
+	for port, sess := range r.sessions {
+		sess.Close()
+		log.Printf("│ INFO  │ Closed session on port %d", port)
+	}
+
+	r.sessions = make(map[int]*protocol.Session)
 }
 
 func ExtractLocalPort(conn net.Conn) int {

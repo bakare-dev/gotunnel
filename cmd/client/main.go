@@ -1,10 +1,14 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
 	"net"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/bakare-dev/gotunnel/internal/client"
@@ -15,6 +19,10 @@ func main() {
 	serverAddr := flag.String("server", "localhost:9000", "tunnel server address")
 	localAddr := flag.String("local", "", "local service to expose (e.g. localhost:6001)")
 	token := flag.String("token", "dev-token", "auth token")
+	noReconnect := flag.Bool("no-reconnect", false, "disable auto-reconnect on connection loss")
+
+	tlsEnabled := flag.Bool("tls", false, "enable TLS encryption")
+	tlsCA := flag.String("tls-ca", "certs/ca-cert.pem", "path to CA certificate")
 
 	flag.Parse()
 
@@ -22,78 +30,111 @@ func main() {
 		log.Fatal("missing --local flag (e.g. --local localhost:6001)")
 	}
 
-	conn, err := net.Dial("tcp", *serverAddr)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer conn.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	sess := protocol.NewSession(conn, conn)
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
-	hs := &protocol.Handshake{
-		Role:         protocol.RoleClient,
-		Capabilities: protocol.CapHeartbeat,
-		ExposeAddr:   *localAddr,
-	}
+	go func() {
+		<-sigChan
+		log.Println("\n│ INFO  │ Received shutdown signal")
+		cancel()
+	}()
 
-	payload, err := hs.Encode()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	if err := sess.WriteFrame(&protocol.Frame{
-		Type:    protocol.MsgHandshake,
-		Payload: payload,
-	}); err != nil {
-		log.Fatal(err)
+	reconnectConfig := client.DefaultReconnectConfig()
+	tlsConfig := client.TLSConfig{
+		Enabled: *tlsEnabled,
+		CAFile:  *tlsCA,
 	}
 
-	frame, err := sess.ReadFrame()
-	if err != nil || frame.Type != protocol.MsgHandshakeAck {
-		log.Fatal("handshake rejected by server")
-	}
-
-	if err := sess.WriteFrame(&protocol.Frame{
-		Type:    protocol.MsgAuth,
-		Payload: protocol.EncodeAuth(*token),
-	}); err != nil {
-		log.Fatal(err)
-	}
-
-	frame, err = sess.ReadFrame()
-	if err != nil || frame.Type != protocol.MsgAuthOK {
-		log.Fatal("authentication rejected by server")
-	}
-
-	// Bind
-	frame, err = sess.ReadFrame()
-	if err != nil || frame.Type != protocol.MsgBindOK {
-		log.Fatal("failed to bind public port")
-	}
-
-	publicPort := protocol.DecodeUint16(frame.Payload)
-
-	printBanner(*serverAddr, publicPort, *localAddr)
-
-	forwarder := client.NewForwarder(sess, *localAddr)
-
-	// Main loop
 	for {
-		frame, err := sess.ReadFrame()
+		select {
+		case <-ctx.Done():
+			log.Println("│ INFO  │ Shutting down...")
+			return
+		default:
+		}
+
+		conn, sess, publicPort, err := client.ConnectWithRetry(ctx, *serverAddr, *localAddr, *token, tlsConfig, reconnectConfig)
 		if err != nil {
-			log.Println("│ ERROR │ Session lost:", err)
+			log.Printf("│ ERROR │ Failed to connect: %v", err)
 			return
 		}
 
-		if frame.Type == protocol.MsgHeartbeat {
-			continue
+		printBanner(*serverAddr, publicPort, *localAddr, !*noReconnect, *tlsEnabled)
+
+		err = runSession(ctx, conn, sess, *localAddr)
+
+		fmt.Println("\n" + sess.Metrics.Summary())
+
+		if err != nil && err != context.Canceled {
+			log.Printf("│ ERROR │ Session lost: %v", err)
 		}
 
-		forwarder.HandleFrame(frame)
+		select {
+		case <-ctx.Done():
+			log.Println("│ INFO  │ Shutdown complete")
+			return
+		default:
+		}
+
+		if *noReconnect {
+			log.Println("│ INFO  │ Auto-reconnect disabled, exiting")
+			return
+		}
+
+		log.Println("│ INFO  │ Connection lost, attempting to reconnect...")
+		time.Sleep(2 * time.Second)
 	}
 }
 
-func printBanner(server string, publicPort uint16, localAddr string) {
+func runSession(ctx context.Context, conn *net.Conn, sess *protocol.Session, localAddr string) error {
+	defer (*conn).Close()
+	defer sess.Close()
+
+	forwarder := client.NewForwarder(sess, localAddr)
+	defer forwarder.Close()
+
+	done := make(chan error, 1)
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				done <- ctx.Err()
+				return
+			default:
+			}
+
+			frame, err := sess.ReadFrame()
+			if err != nil {
+				done <- err
+				return
+			}
+
+			if frame.Type == protocol.MsgHeartbeat {
+				continue
+			}
+
+			forwarder.HandleFrame(frame)
+		}
+	}()
+
+	return <-done
+}
+
+func printBanner(server string, publicPort uint16, localAddr string, reconnectEnabled, tlsEnabled bool) {
+	reconnectStatus := "enabled"
+	if !reconnectEnabled {
+		reconnectStatus = "disabled"
+	}
+
+	tlsStatus := "disabled"
+	if tlsEnabled {
+		tlsStatus = "enabled ✓"
+	}
+
 	banner := `
 ╔════════════════════════════════════════════════════════════╗
 ║                   GoTunnel v0.1.0                          ║
@@ -103,12 +144,14 @@ func printBanner(server string, publicPort uint16, localAddr string) {
 Session Status         online
 Version                0.1.0
 Tunnel Server          %s
+TLS Encryption         %s
+Auto-Reconnect         %s
 
 Forwarding             tcp://localhost:%d → %s
 
 HTTP Requests
 ─────────────────────────────────────────────────────────────
 `
-	fmt.Printf(banner, server, publicPort, localAddr)
+	fmt.Printf(banner, server, tlsStatus, reconnectStatus, publicPort, localAddr)
 	fmt.Printf("Connected at %s\n\n", time.Now().Format("2006-01-02 15:04:05"))
 }

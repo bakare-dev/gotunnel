@@ -22,7 +22,12 @@ func (p *PublicListener) handleConn(conn net.Conn) {
 		return
 	}
 
+	if sess.IsClosed() {
+		return
+	}
+
 	stream := sess.Streams().Open()
+	sess.Metrics.StreamOpened()
 
 	httpLog := &tunnel.HTTPLog{
 		StartTime: time.Now(),
@@ -34,6 +39,7 @@ func (p *PublicListener) handleConn(conn net.Conn) {
 		StreamID: stream.ID,
 	}); err != nil {
 		log.Printf("│ ERROR │ [Stream %d] Failed to send StreamOpen: %v", stream.ID, err)
+		sess.Metrics.StreamClosed()
 		return
 	}
 
@@ -46,6 +52,10 @@ func (p *PublicListener) handleConn(conn net.Conn) {
 		isFirstPacket := true
 
 		for {
+			if sess.IsClosed() {
+				return
+			}
+
 			n, err := conn.Read(buf)
 			if err != nil {
 				if err != io.EOF {
@@ -66,7 +76,9 @@ func (p *PublicListener) handleConn(conn net.Conn) {
 				StreamID: stream.ID,
 				Payload:  buf[:n],
 			}); err != nil {
-				log.Printf("│ ERROR │ [Stream %d] Failed to forward to tunnel: %v", stream.ID, err)
+				if err != protocol.ErrSessionExpired {
+					log.Printf("│ ERROR │ [Stream %d] Failed to forward to tunnel: %v", stream.ID, err)
+				}
 				break
 			}
 		}
@@ -93,6 +105,10 @@ func (p *PublicListener) handleConn(conn net.Conn) {
 					httpLog.Response = tunnel.ParseHTTPResponse(data)
 					httpLog.Duration = time.Since(httpLog.StartTime)
 
+					if httpLog.Response != nil {
+						sess.Metrics.RecordHTTPRequest(httpLog.Response.StatusCode, httpLog.Duration)
+					}
+
 					if logStr := httpLog.String(); logStr != "" {
 						log.Printf("│ HTTP  │ %s", logStr)
 					}
@@ -111,4 +127,5 @@ func (p *PublicListener) handleConn(conn net.Conn) {
 
 	wg.Wait()
 	sess.Streams().Close(stream.ID)
+	sess.Metrics.StreamClosed()
 }

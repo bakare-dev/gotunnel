@@ -25,8 +25,10 @@
 
 # TLS certs / secrets
 certs/
+*.pem
 *.key
 *.crt
+*.csr
 
 # Config overrides
 *.local.yaml

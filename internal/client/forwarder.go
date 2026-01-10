@@ -1,6 +1,7 @@
 package client
 
 import (
+	"log"
 	"net"
 	"sync"
 
@@ -24,4 +25,19 @@ func NewForwarder(sess *protocol.Session, targetAddr string) *Forwarder {
 		conns:      make(map[uint32]net.Conn),
 		httpLogs:   make(map[uint32]*tunnel.HTTPLog),
 	}
+}
+
+func (f *Forwarder) Close() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	log.Printf("│ INFO  │ Closing %d active connections...", len(f.conns))
+
+	for streamID, conn := range f.conns {
+		conn.Close()
+		log.Printf("│ INFO  │ Closed stream %d", streamID)
+	}
+
+	f.conns = make(map[uint32]net.Conn)
+	f.httpLogs = make(map[uint32]*tunnel.HTTPLog)
 }

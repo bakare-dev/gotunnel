@@ -44,3 +44,20 @@ func (m *StreamManager) Close(id uint32) {
 		delete(m.streams, id)
 	}
 }
+
+func (m *StreamManager) GetAllStreamIDs() []uint32 {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	ids := make([]uint32, 0, len(m.streams))
+	for id := range m.streams {
+		ids = append(ids, id)
+	}
+	return ids
+}
+
+func (m *StreamManager) Count() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return len(m.streams)
+}
