@@ -22,75 +22,82 @@ A lightweight, self-hosted TCP tunneling system written in Go. Expose local serv
 
 ### Installation
 
-#### Download Pre-built Binaries
+#### Download Pre-built Binary
 
 ```bash
-# Linux/macOS
+# Linux
 wget https://github.com/bakare-dev/gotunnel/releases/latest/download/gotunnel-linux-amd64
 chmod +x gotunnel-linux-amd64
 sudo mv gotunnel-linux-amd64 /usr/local/bin/gotunnel
 
-# Or build from source
-git clone https://github.com/bakare-dev/gotunnel.git
-cd gotunnel
-go build -o gotunnel-server cmd/server/main.go
-go build -o gotunnel-client cmd/client/main.go
+# macOS (Intel)
+wget https://github.com/bakare-dev/gotunnel/releases/latest/download/gotunnel-darwin-amd64
+chmod +x gotunnel-darwin-amd64
+sudo mv gotunnel-darwin-amd64 /usr/local/bin/gotunnel
+
+# macOS (Apple Silicon)
+wget https://github.com/bakare-dev/gotunnel/releases/latest/download/gotunnel-darwin-arm64
+chmod +x gotunnel-darwin-arm64
+sudo mv gotunnel-darwin-arm64 /usr/local/bin/gotunnel
+
+# Windows
+# Download from: https://github.com/bakare-dev/gotunnel/releases/latest/download/gotunnel-windows-amd64.exe
 ```
 
-#### Using Docker
+#### Install with Go
 
 ```bash
-# Pull images
-docker pull praisebaka/gotunnel-server:latest
-docker pull praisebaka/gotunnel-client:latest
+go install github.com/bakare-dev/gotunnel/cmd/gotunnel@latest
+```
 
-# Run server
-docker run -d -p 9000:9000 -p 10000-10100:10000-10100 \
-  --name gotunnel-server \
-  praisebaka/gotunnel-server:latest
+#### Build from Source
 
-# Run client
-docker run -d --network host \
-  praisebaka/gotunnel-client:latest \
-  --server localhost:9000 --local localhost:3000
+```bash
+git clone https://github.com/bakare-dev/gotunnel.git
+cd gotunnel
+make build
+# Binary will be in bin/gotunnel
 ```
 
 ### Server Setup
 
 ```bash
 # Basic usage
-./gotunnel-server
+gotunnel server
 
 # With TLS (recommended for production)
-./gotunnel-server \
+gotunnel server \
   --tls \
   --tls-cert=/path/to/server-cert.pem \
   --tls-key=/path/to/server-key.pem
 
 # Custom configuration
-./gotunnel-server \
+gotunnel server \
   --addr=:9000 \
-  --start-port=10000 \
-  --tls
+  --start-port=10000
 ```
 
 ### Client Usage
 
 ```bash
 # Basic usage
-./gotunnel-client --local localhost:3000
+gotunnel --local localhost:3000
+
+# Explicit client command
+gotunnel client --local localhost:3000
+
+# Connect to remote server
+gotunnel --server your-server.com:9000 --local localhost:3000
 
 # With TLS
-./gotunnel-client \
+gotunnel \
   --server your-server.com:9000 \
   --local localhost:3000 \
   --tls \
   --tls-ca=/path/to/ca-cert.pem
 
 # Disable auto-reconnect
-./gotunnel-client \
-  --local localhost:3000 \
-  --no-reconnect
+gotunnel --local localhost:3000 --no-reconnect
 ```
 
 ### Access Your Service
@@ -98,6 +105,16 @@ docker run -d --network host \
 ```bash
 # From anywhere on the internet
 curl http://your-server-ip:10000
+```
+
+## Commands
+
+```bash
+gotunnel server      # Start tunnel server
+gotunnel client      # Start tunnel client (explicit)
+gotunnel             # Start tunnel client (default)
+gotunnel version     # Show version
+gotunnel help        # Show help
 ```
 
 ## Use Cases
@@ -139,12 +156,12 @@ Real-time monitoring of all HTTP traffic with detailed metrics:
 
 ```
 ╔════════════════════════════════════════════════════════════╗
-║                   GoTunnel v0.1.0                          ║
+║                   GoTunnel v1.0.1                          ║
 ║                 Secure TCP Tunneling                       ║
 ╚════════════════════════════════════════════════════════════╝
 
 Session Status         online
-Version                0.1.0
+Version                1.0.1
 Tunnel Server          tunnel.example.com:9000
 TLS Encryption         enabled ✓
 Auto-Reconnect         enabled
@@ -223,10 +240,10 @@ Secure tunnel traffic with TLS:
 ./scripts/gen-cert.sh
 
 # Server with TLS
-./gotunnel-server --tls --tls-cert=certs/server-cert.pem --tls-key=certs/server-key.pem
+gotunnel server --tls --tls-cert=certs/server-cert.pem --tls-key=certs/server-key.pem
 
 # Client with TLS
-./gotunnel-client --local localhost:3000 --tls --tls-ca=certs/ca-cert.pem
+gotunnel --local localhost:3000 --tls --tls-ca=certs/ca-cert.pem
 ```
 
 ## Configuration
@@ -256,12 +273,14 @@ Secure tunnel traffic with TLS:
 
 ### Deploy Server on VPS
 
-#### Option 1: Binary Deployment
+#### Using Binary
 
 ```bash
 # On your VPS (Ubuntu/Debian)
-# 1. Upload binary
-scp gotunnel-server user@your-vps:/usr/local/bin/
+# 1. Download binary
+wget https://github.com/bakare-dev/gotunnel/releases/latest/download/gotunnel-linux-amd64
+chmod +x gotunnel-linux-amd64
+sudo mv gotunnel-linux-amd64 /usr/local/bin/gotunnel
 
 # 2. Create systemd service
 sudo nano /etc/systemd/system/gotunnel.service
@@ -276,8 +295,8 @@ After=network.target
 
 [Service]
 Type=simple
-User=gotunnel
-ExecStart=/usr/local/bin/gotunnel-server --addr=:9000 --start-port=10000
+User=root
+ExecStart=/usr/local/bin/gotunnel server --addr=:9000 --start-port=10000
 Restart=always
 RestartSec=10
 
@@ -291,54 +310,24 @@ sudo systemctl daemon-reload
 sudo systemctl enable gotunnel
 sudo systemctl start gotunnel
 
-# 4. Open firewall
+# 4. Check status
+sudo systemctl status gotunnel
+
+# 5. Open firewall
 sudo ufw allow 9000/tcp
 sudo ufw allow 10000:10100/tcp
+sudo ufw enable
 ```
 
-#### Option 2: Docker Deployment
-
-```bash
-# On your VPS
-docker run -d \
-  --name gotunnel-server \
-  --restart always \
-  -p 9000:9000 \
-  -p 10000-10100:10000-10100 \
-  praisebaka/gotunnel-server:latest
-```
-
-#### Option 3: Docker Compose
-
-Create `docker-compose.yml`:
-
-```yaml
-version: "3.8"
-
-services:
-    gotunnel-server:
-        image: praisebaka/gotunnel-server:latest
-        container_name: gotunnel-server
-        restart: always
-        ports:
-            - "9000:9000"
-            - "10000-10100:10000-10100"
-        command: --addr=:9000 --start-port=10000
-```
-
-```bash
-docker-compose up -d
-```
-
-### Client Installation on User's PC
+### Client Installation
 
 #### Linux/macOS
 
 ```bash
-# Download and install
-wget https://github.com/bakare-dev/gotunnel/releases/latest/download/gotunnel-client-$(uname -s)-$(uname -m)
-chmod +x gotunnel-client-*
-sudo mv gotunnel-client-* /usr/local/bin/gotunnel
+# Download
+wget https://github.com/bakare-dev/gotunnel/releases/latest/download/gotunnel-linux-amd64
+chmod +x gotunnel-linux-amd64
+sudo mv gotunnel-linux-amd64 /usr/local/bin/gotunnel
 
 # Use it
 gotunnel --server your-server.com:9000 --local localhost:3000
@@ -347,19 +336,18 @@ gotunnel --server your-server.com:9000 --local localhost:3000
 #### Windows
 
 ```powershell
-# Download from releases page
-# Or use Chocolatey (coming soon)
-choco install gotunnel
+# Download gotunnel-windows-amd64.exe from releases page
+# Rename to gotunnel.exe
+# Add to PATH or run directly
 
-# Use it
 gotunnel.exe --server your-server.com:9000 --local localhost:3000
 ```
 
 #### Using Go
 
 ```bash
-go install github.com/bakare-dev/gotunnel/cmd/client@latest
-gotunnel-client --server your-server.com:9000 --local localhost:3000
+go install github.com/bakare-dev/gotunnel/cmd/gotunnel@latest
+gotunnel --server your-server.com:9000 --local localhost:3000
 ```
 
 ## Examples
@@ -409,8 +397,7 @@ node webhook-server.js  # Running on port 3000
 # Tunnel it
 gotunnel --server tunnel.example.com:9000 --local localhost:3000
 
-# Configure webhook URL in external service
-# Webhook URL: http://tunnel.example.com:10000/webhook
+# Configure webhook URL: http://tunnel.example.com:10000/webhook
 ```
 
 ## Protocol Support
@@ -427,7 +414,7 @@ GoTunnel operates at the TCP layer and is completely **protocol-agnostic**:
 ## Architecture
 
 -   **Binary Protocol**: Custom frame-based protocol with versioning
--   **State Machine**: Enforced handshake → auth → bind → forwarding flow
+-   **State Machine**: Enforced handshake → auth → forwarding flow
 -   **Stream Multiplexing**: Each public connection becomes a unique stream
 -   **Concurrent**: Handles multiple clients and streams simultaneously
 
@@ -435,7 +422,7 @@ See [PROTOCOL.md](docs/PROTOCOL.md) and [ARCHITECTURE.md](docs/ARCHITECTURE.md) 
 
 ## Project Status
 
-**Current Version**: v1.0.0 (Stable)
+**Current Version**: v1.0.1 (Stable)
 
 ### Implemented Features ✅
 
@@ -449,6 +436,7 @@ See [PROTOCOL.md](docs/PROTOCOL.md) and [ARCHITECTURE.md](docs/ARCHITECTURE.md) 
 -   ✅ Auto-reconnection with exponential backoff
 -   ✅ TLS encryption support
 -   ✅ Token-based authentication
+-   ✅ Unified CLI with subcommands
 
 ### Planned Features (v2.0+) 🚀
 
@@ -468,8 +456,8 @@ See [PROTOCOL.md](docs/PROTOCOL.md) and [ARCHITECTURE.md](docs/ARCHITECTURE.md) 
 
 -   [Protocol Specification](docs/PROTOCOL.md) - Wire protocol details
 -   [Architecture](docs/ARCHITECTURE.md) - System design and components
--   [Deployment Guide](#deployment-guide) - Production deployment instructions
 -   [Contributing](CONTRIBUTING.md) - How to contribute
+-   [Changelog](CHANGELOG.md) - Version history
 
 ## Performance
 
@@ -529,8 +517,8 @@ openssl x509 -in certs/server-cert.pem -text -noout
 # Test connectivity
 telnet your-server.com 9000
 
-# Check client logs
-gotunnel --server your-server.com:9000 --local localhost:3000 -v
+# Try with verbose logging (if implemented)
+gotunnel --server your-server.com:9000 --local localhost:3000
 ```
 
 ## Contributing
@@ -586,12 +574,11 @@ Built by **Bakare Praise** as a portfolio project demonstrating:
 
 ## Roadmap
 
-### v1.1 (Next Minor Release)
+### v1.2 (Next Minor Release)
 
 -   [ ] Configuration file support (YAML/JSON)
 -   [ ] Improved error messages
 -   [ ] Connection pooling optimizations
--   [ ] Systemd service files
 
 ### v2.0 (Major Release - P2P)
 
