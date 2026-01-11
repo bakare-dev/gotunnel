@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"crypto/tls"
-	"flag"
 	"fmt"
 	"log"
 	"net"
@@ -15,28 +14,17 @@ import (
 	"github.com/bakare-dev/gotunnel/internal/server"
 )
 
-func main() {
+func serverMain(tunnelAddr string, startPort int, tlsEnabled bool, tlsCert, tlsKey string) {
+	printServerBanner(tlsEnabled)
 
-	tunnelAddr := flag.String("addr", ":9000", "tunnel listen address")
-	startPort := flag.Int("start-port", 10000, "starting port for public listeners")
-
-	tlsEnabled := flag.Bool("tls", false, "enable TLS encryption")
-	tlsCert := flag.String("tls-cert", "certs/server-cert.pem", "path to TLS certificate")
-	tlsKey := flag.String("tls-key", "certs/server-key.pem", "path to TLS private key")
-
-	flag.Parse()
-
-	printBanner(*tlsEnabled)
-
-	router := server.NewRouter(*startPort)
+	router := server.NewRouter(startPort)
 	public := server.NewPublicListener(router)
 
 	var ln net.Listener
 	var err error
 
-	if *tlsEnabled {
-
-		cert, err := tls.LoadX509KeyPair(*tlsCert, *tlsKey)
+	if tlsEnabled {
+		cert, err := tls.LoadX509KeyPair(tlsCert, tlsKey)
 		if err != nil {
 			log.Fatalf("Failed to load TLS certificate: %v", err)
 		}
@@ -46,14 +34,14 @@ func main() {
 			MinVersion:   tls.VersionTLS12,
 		}
 
-		ln, err = tls.Listen("tcp", *tunnelAddr, config)
+		ln, err = tls.Listen("tcp", tunnelAddr, config)
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		log.Println("│ INFO  │ TLS enabled ✓")
 	} else {
-		ln, err = net.Listen("tcp", *tunnelAddr)
+		ln, err = net.Listen("tcp", tunnelAddr)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -61,7 +49,7 @@ func main() {
 	}
 
 	log.Println("│ INFO  │ Server started")
-	log.Printf("│ INFO  │ Tunnel port: %s\n", *tunnelAddr)
+	log.Printf("│ INFO  │ Tunnel port: %s\n", tunnelAddr)
 	log.Println("│ INFO  │ Ready for connections")
 	log.Println("─────────────────────────────────────────────────────────────")
 
@@ -95,19 +83,17 @@ func main() {
 					continue
 				}
 			}
-			go handleClient(conn, router, public, ctx)
+			go handleServerClient(conn, router, public, ctx)
 		}
 	}()
 
 	<-ctx.Done()
 	log.Println("│ INFO  │ Shutting down server...")
-
 	router.CloseAll()
-
 	log.Println("│ INFO  │ Server shutdown complete")
 }
 
-func printBanner(tlsEnabled bool) {
+func printServerBanner(tlsEnabled bool) {
 	tlsStatus := ""
 	if tlsEnabled {
 		tlsStatus = " (TLS Enabled)"
@@ -115,13 +101,13 @@ func printBanner(tlsEnabled bool) {
 
 	banner := fmt.Sprintf(`
 ╔════════════════════════════════════════════════════════════╗
-║              GoTunnel Server v0.1.0%s                        ║
+║              GoTunnel Server v%s%-24s║
 ╚════════════════════════════════════════════════════════════╝
-`, tlsStatus)
+`, version, tlsStatus)
 	fmt.Println(banner)
 }
 
-func handleClient(conn net.Conn, router *server.Router, public *server.PublicListener, ctx context.Context) {
+func handleServerClient(conn net.Conn, router *server.Router, public *server.PublicListener, ctx context.Context) {
 	defer conn.Close()
 
 	sess := protocol.NewSession(conn, conn)
@@ -140,7 +126,6 @@ func handleClient(conn net.Conn, router *server.Router, public *server.PublicLis
 		}
 
 		switch frame.Type {
-
 		case protocol.MsgHandshake:
 			if err := sess.ProcessHandshake(frame); err != nil {
 				log.Printf("│ ERROR │ Handshake failed: %v", err)

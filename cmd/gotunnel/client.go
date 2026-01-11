@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"log"
 	"net"
@@ -15,21 +14,7 @@ import (
 	"github.com/bakare-dev/gotunnel/internal/protocol"
 )
 
-func main() {
-	serverAddr := flag.String("server", "localhost:9000", "tunnel server address")
-	localAddr := flag.String("local", "", "local service to expose (e.g. localhost:6001)")
-	token := flag.String("token", "dev-token", "auth token")
-	noReconnect := flag.Bool("no-reconnect", false, "disable auto-reconnect on connection loss")
-
-	tlsEnabled := flag.Bool("tls", false, "enable TLS encryption")
-	tlsCA := flag.String("tls-ca", "certs/ca-cert.pem", "path to CA certificate")
-
-	flag.Parse()
-
-	if *localAddr == "" {
-		log.Fatal("missing --local flag (e.g. --local localhost:6001)")
-	}
-
+func clientMain(serverAddr, localAddr, token string, tlsEnabled bool, tlsCA string, noReconnect bool) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -44,8 +29,8 @@ func main() {
 
 	reconnectConfig := client.DefaultReconnectConfig()
 	tlsConfig := client.TLSConfig{
-		Enabled: *tlsEnabled,
-		CAFile:  *tlsCA,
+		Enabled: tlsEnabled,
+		CAFile:  tlsCA,
 	}
 
 	for {
@@ -56,15 +41,15 @@ func main() {
 		default:
 		}
 
-		conn, sess, publicPort, err := client.ConnectWithRetry(ctx, *serverAddr, *localAddr, *token, tlsConfig, reconnectConfig)
+		conn, sess, publicPort, err := client.ConnectWithRetry(ctx, serverAddr, localAddr, token, tlsConfig, reconnectConfig)
 		if err != nil {
 			log.Printf("│ ERROR │ Failed to connect: %v", err)
 			return
 		}
 
-		printBanner(*serverAddr, publicPort, *localAddr, !*noReconnect, *tlsEnabled)
+		printClientBanner(serverAddr, publicPort, localAddr, !noReconnect, tlsEnabled)
 
-		err = runSession(ctx, conn, sess, *localAddr)
+		err = runClientSession(ctx, conn, sess, localAddr)
 
 		fmt.Println("\n" + sess.Metrics.Summary())
 
@@ -79,7 +64,7 @@ func main() {
 		default:
 		}
 
-		if *noReconnect {
+		if noReconnect {
 			log.Println("│ INFO  │ Auto-reconnect disabled, exiting")
 			return
 		}
@@ -89,7 +74,7 @@ func main() {
 	}
 }
 
-func runSession(ctx context.Context, conn *net.Conn, sess *protocol.Session, localAddr string) error {
+func runClientSession(ctx context.Context, conn *net.Conn, sess *protocol.Session, localAddr string) error {
 	defer (*conn).Close()
 	defer sess.Close()
 
@@ -124,7 +109,7 @@ func runSession(ctx context.Context, conn *net.Conn, sess *protocol.Session, loc
 	return <-done
 }
 
-func printBanner(server string, publicPort uint16, localAddr string, reconnectEnabled, tlsEnabled bool) {
+func printClientBanner(server string, publicPort uint16, localAddr string, reconnectEnabled, tlsEnabled bool) {
 	reconnectStatus := "enabled"
 	if !reconnectEnabled {
 		reconnectStatus = "disabled"
@@ -137,12 +122,12 @@ func printBanner(server string, publicPort uint16, localAddr string, reconnectEn
 
 	banner := `
 ╔════════════════════════════════════════════════════════════╗
-║                   GoTunnel v0.1.0                          ║
+║                   GoTunnel v%s                         ║
 ║                 Secure TCP Tunneling                       ║
 ╚════════════════════════════════════════════════════════════╝
 
 Session Status         online
-Version                0.1.0
+Version                %s
 Tunnel Server          %s
 TLS Encryption         %s
 Auto-Reconnect         %s
@@ -152,6 +137,6 @@ Forwarding             tcp://localhost:%d → %s
 HTTP Requests
 ─────────────────────────────────────────────────────────────
 `
-	fmt.Printf(banner, server, tlsStatus, reconnectStatus, publicPort, localAddr)
+	fmt.Printf(banner, version, version, server, tlsStatus, reconnectStatus, publicPort, localAddr)
 	fmt.Printf("Connected at %s\n\n", time.Now().Format("2006-01-02 15:04:05"))
 }

@@ -245,7 +245,6 @@ None - backward compatible with 0.1.0 protocol.
 -   [ ] Improved error messages with error codes
 -   [ ] Connection pooling optimizations
 -   [ ] Systemd service files
--   [ ] Docker images with Docker Compose examples
 -   [ ] Prometheus metrics endpoint
 -   [ ] Log levels (DEBUG, INFO, WARN, ERROR)
 -   [ ] Structured logging (JSON format option)
