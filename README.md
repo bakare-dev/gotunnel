@@ -41,17 +41,17 @@ go build -o gotunnel-client cmd/client/main.go
 
 ```bash
 # Pull images
-docker pull bakare/gotunnel-server:latest
-docker pull bakare/gotunnel-client:latest
+docker pull praisebaka/gotunnel-server:latest
+docker pull praisebaka/gotunnel-client:latest
 
 # Run server
 docker run -d -p 9000:9000 -p 10000-10100:10000-10100 \
   --name gotunnel-server \
-  bakare/gotunnel-server:latest
+  praisebaka/gotunnel-server:latest
 
 # Run client
 docker run -d --network host \
-  bakare/gotunnel-client:latest \
+  praisebaka/gotunnel-client:latest \
   --server localhost:9000 --local localhost:3000
 ```
 
@@ -305,7 +305,7 @@ docker run -d \
   --restart always \
   -p 9000:9000 \
   -p 10000-10100:10000-10100 \
-  bakare/gotunnel-server:latest
+  praisebaka/gotunnel-server:latest
 ```
 
 #### Option 3: Docker Compose
@@ -317,7 +317,7 @@ version: "3.8"
 
 services:
     gotunnel-server:
-        image: bakare/gotunnel-server:latest
+        image: praisebaka/gotunnel-server:latest
         container_name: gotunnel-server
         restart: always
         ports:
