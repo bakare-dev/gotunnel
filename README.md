@@ -2,6 +2,22 @@
 
 A lightweight, self-hosted TCP tunneling system written in Go. Expose local services to the public internet through a secure tunnel, similar to ngrok.
 
+## 🎯 Purpose & Learning Outcomes
+
+This project was built for **learning and portfolio demonstration**, showcasing:
+
+-   🧠 **Systems programming skills in Go**  
+    Hands-on experience with low-level programming, concurrency, and performance-oriented design.
+
+-   🌐 **Understanding of networking concepts**  
+    Practical implementation of **TCP connections**, **tunneling**, and **connection multiplexing**.
+
+-   🔁 **Designing resilient client–server systems**  
+    Includes reconnect logic, fault tolerance, and long-lived connections.
+
+-   🧩 **Clean project structure and extensibility**  
+    Modular separation of concerns (client, server, protocol), making the system easy to extend and maintain.
+
 ## Features
 
 -   🔒 **Custom Binary Protocol** - Efficient, versioned wire protocol
